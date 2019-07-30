@@ -1,2 +1,2 @@
 # torinaku
-A command line tool for Hyperledger Iroha
+A TUI client for Hyperledger Iroha
