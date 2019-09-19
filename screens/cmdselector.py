@@ -10,7 +10,7 @@ from copy import deepcopy
 
 from datetime import datetime
 
-from proto.util import ProtoCommands
+from proto.commands import ProtoCommandLoader
 
 
 class CommandSelectorView(Frame):
@@ -32,8 +32,8 @@ class CommandSelectorView(Frame):
     pass
 
   def _get_commands_list(self):
-    pc = ProtoCommands()
-    cmds = pc.list_commands(pretty_names=True)
+    pc = ProtoCommandLoader()
+    cmds = pc.commands
     listbox_data = enumerate([n[0] for n in cmds])
     return [(t[1], t[0]) for t in listbox_data]
 

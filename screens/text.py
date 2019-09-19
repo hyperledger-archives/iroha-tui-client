@@ -1,12 +1,16 @@
 #!/usr/bin/env python3
 
-from asciimatics.event import KeyboardEvent
-from asciimatics.widgets import Frame, Layout, Button, Divider, Label, Text, ListBox, VerticalDivider
+from asciimatics.widgets import Frame, ListBox, Layout, Divider, Text, \
+    Button, TextBox, Widget, MultiColumnListBox, Label, VerticalDivider, PopUpDialog
+from asciimatics.scene import Scene
 from asciimatics.screen import Screen
-from tui.indicators import Indicators
+from asciimatics.exceptions import ResizeScreenError, NextScene, StopApplication
+import sys
+from copy import deepcopy
 
 from datetime import datetime
-from app.validators import uint64_validator, account_id_validator, quorum_validator
+
+from tui.indicators import Indicators
 
 
 class DateUtils:
@@ -26,15 +30,7 @@ class DateUtils:
 
 
 class TransactionView(Frame, Indicators):
-  def __init__(self, screen_name, screen, model):
-    self._screen_name = screen_name
-    self._model = model
-    self._submodel = self._model.submodel(screen_name, self)
-
-    self._init_focus_on = None
-    self._commands_list = None
-    self._signatures_list = None
-
+  def __init__(self, screen, model):
     super().__init__(
         screen,
         screen.height,
@@ -42,29 +38,27 @@ class TransactionView(Frame, Indicators):
         hover_focus=True,
         has_border=True,
         can_scroll=False,
-        on_load=self._onload_handler,
-        title='Transaction Editor'
+        title='Transaction Composer'
     )
     self._screen_height = screen.height
     self.init_indicators()
+    self._on_load = self._init_focus
 
+    self._model = model
+    self._init_focus_on = None
     self._compose_layout()
 
-  def update(self, frame_no):
-    # Used to ensure that model._current_frame is set correctly
-    self._submodel = self._model.submodel(self._screen_name, self)
-    super().update(frame_no)
+    self.data = {
+        'human_time': 'Tue, 13 Aug 2019 20:54:36 +0000',
+        'batch_type': 'Non-batched transaction',
+        'batch_txs_count': '0',
+        'created_time': str(DateUtils.now_ts()),
+        'quorum': '1',
+    }
 
-  def _onload_handler(self):
-    self._submodel.load()
-    if self._submodel.initialized:
-      data = self._submodel.data
-      self._commands_list.options = data['commands_names']
-      del data['commands_names']
-      self.data = data
-      self.indicators_data = data
-
-    self._init_focus()
+    self.indicators_data = {
+        'tx_hash': '4a4883bc2167f04a7f64c373b88c100095804d537da384446c236087b8934555',
+    }
 
   def _init_focus(self):
     if self._init_focus_on:
@@ -76,12 +70,10 @@ class TransactionView(Frame, Indicators):
 
   def _set_current_timestamp(self):
     self.data = {
-        '.payload.reduced_payload.created_time': str(DateUtils.now_ts())
+        'created_time': str(DateUtils.now_ts())
     }
 
   def _ts_change(self, x):
-    if not uint64_validator(x):
-      return False
     human_time = ''
     result = False
     try:
@@ -94,17 +86,12 @@ class TransactionView(Frame, Indicators):
     }
     return result
 
-  def _save_go_back(self):
-    self._semi_save()
-    self._cancel()
-
   def _compose_layout(self):
     PADDING = 0
-    tx_buttons_lay = Layout([1, 1, 1])
+    tx_buttons_lay = Layout([1, 1])
     self.add_layout(tx_buttons_lay)
-    tx_buttons_lay.add_widget(Button('Save', on_click=self._semi_save), 0)
-    tx_buttons_lay.add_widget(Button('Save & Go back', on_click=self._save_go_back), 1)
-    tx_buttons_lay.add_widget(Button('Go back', on_click=self._cancel), 2)
+    tx_buttons_lay.add_widget(Button('Save', on_click=self.dummy), 0)
+    tx_buttons_lay.add_widget(Button('Cancel', on_click=self.dummy), 1)
 
     hash_lay = Layout([PADDING, 18, PADDING])
     self.add_layout(hash_lay)
@@ -119,22 +106,25 @@ class TransactionView(Frame, Indicators):
         'widget': 0
     }
     lay1.add_widget(Label('Creator Id'), 1)
-    lay1.add_widget(Text(name='.payload.reduced_payload.creator_account_id', validator=account_id_validator), 2)
+    lay1.add_widget(Text(name='creator_id'), 2)
     lay1.add_widget(Label('Quorum'), 1)
-    lay1.add_widget(Text(name='.payload.reduced_payload.quorum', validator=quorum_validator), 2)
+    self._q = Text(name='quorum')
+    lay1.add_widget(self._q, 2)
 
     lay2 = Layout([PADDING, 5, 9, 4, PADDING])
     self.add_layout(lay2)
     lay2.add_widget(Label('Created Timestamp'), 1)
-    lay2.add_widget(Text(name='.payload.reduced_payload.created_time', validator=self._ts_change), 2)
+    lay2.add_widget(Text(name='created_time', validator=self._ts_change), 2)
     lay2.add_widget(Button('Use Now', on_click=self._set_current_timestamp), 3)
 
     lay3 = Layout([PADDING, 5, 13, PADDING])
     self.add_layout(lay3)
     lay3.add_widget(Label('Human Time'), 1)
     lay3.add_widget(self.Indicator(name='human_time'), 2)
-    lay3.add_widget(Label('Batch Summary'), 1)
-    lay3.add_widget(self.Indicator(name='batch_summary'), 2)
+    lay3.add_widget(Label('Batch Type'), 1)
+    lay3.add_widget(self.Indicator(name='batch_type', label='Non-batched transaction'), 2)
+    lay3.add_widget(Label('Txs in Batch'), 1)
+    lay3.add_widget(self.Indicator(name='batch_txs_count', label='0'), 2)
 
     lay4 = Layout([PADDING, 18, PADDING])
     self.add_layout(lay4)
@@ -152,46 +142,53 @@ class TransactionView(Frame, Indicators):
 
     lay5 = Layout([PADDING, 9, 1, 8, PADDING])
     self.add_layout(lay5)
-    self._commands_list = ListBox(
+    lay5.add_widget(ListBox(
         max(self._screen_height - 13, 4),
-        [],
+        [('sadf', 1), ('sadfxcc', 2), ('sdfxcv', 3), ('sadf', 4), ('sadfxcc', 5),
+         ('sdfxcv', 6), ('sadf', 7), ('sadfxcc', 8), ('sdfxcv', 9)],
         name='commands',
         add_scroll_bar=True,
         on_change=self.dummy,
-        on_select=self.dummy
-    )
-    lay5.add_widget(self._commands_list, 1)
+        on_select=self.cmd_select
+    ), 1)
     lay5.add_widget(VerticalDivider(), 2)
-    self._signatures_list = ListBox(
+    lay5.add_widget(ListBox(
         max(self._screen_height - 13, 4),
         {},
         name='signatures',
         add_scroll_bar=True,
         on_change=self.dummy,
         on_select=self.dummy
-    )
-    lay5.add_widget(self._signatures_list, 3)
+    ), 3)
     self.fix()
 
-  def process_event(self, event):
-    if isinstance(event, KeyboardEvent):
-      if event.key_code == Screen.KEY_ESCAPE:
-        self._cancel()
-    super().process_event(event)
-
-  def _semi_save(self):
+  def cmd_select(self):
     self.save()
-    if self._submodel.initialized:
-      try:
-        self._submodel.data = self.data
-      except ValueError:
-        self.indicators_data = {'tx_hash': 'Invalid data entered'}
-        # self._model.popup('Changes cannot be saved. Please check data format.\nError:\n{}'.format(str(e)))
-        return
-      self._submodel.save()
+    selected = self.data['commands']
+    # self._scene.add_effect(PopUpDialog(self._screen, str(selected), ['OK']))
+    self.data = {'quorum': str(selected)}
+    # self._scene.add_effect(PopUpDialog(self._screen, self.data['quorum'], ['OK']))
 
-  def _cancel(self):
-    self._submodel.cleanup()
-    self._model._current_tx_idx = None
-    self._submodel.reset()
-    self._model.previousscreen()
+
+class Model:
+  pass
+
+
+def play_wrapper(screen, scene):
+  model = Model()
+  scenes = [
+      Scene([TransactionView(screen, model)], -1, name='Transaction Composer'),
+  ]
+
+  screen.play(scenes, stop_on_resize=True, start_scene=scene, allow_int=True)
+
+
+last_scene = None
+while True:
+  try:
+    Screen.wrapper(play_wrapper, catch_interrupt=False, arguments=[last_scene])
+    sys.exit(0)
+  except ResizeScreenError as e:
+    last_scene = e.scene
+  except KeyboardInterrupt:
+    sys.exit(0)

@@ -1,0 +1,2 @@
+class StubModel:
+  pass

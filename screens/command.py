@@ -10,7 +10,9 @@ from copy import deepcopy
 
 from datetime import datetime
 
-from proto.util import ProtoCommands
+from proto.commands import ProtoCommandLoader
+from proto.message import MessageModel
+from tui.adaptors import CommandTuiAdaptor
 
 
 class CommandView(Frame):
@@ -22,8 +24,8 @@ class CommandView(Frame):
         hover_focus=True,
         has_border=True,
         has_shadow=True,
-        can_scroll=False,
-        title='Command Composer'
+        can_scroll=True,
+        title='Command Editor'
     )
     self._model = model
     self._compose_layout()
@@ -31,41 +33,39 @@ class CommandView(Frame):
   def dummy(self):
     pass
 
-  def _get_commands_list(self):
-    pc = ProtoCommands()
-    cmds = pc.list_commands(pretty_names=True)
-    listbox_data = enumerate([n[0] for n in cmds])
-    return [(t[1], t[0]) for t in listbox_data]
-
   def _compose_layout(self):
-    list_lay = Layout([1], fill_frame=True)
-    self.add_layout(list_lay)
-    list_lay.add_widget(ListBox(
-        Widget.FILL_FRAME,
-        self._get_commands_list(),
-        name='command_names',
-        add_scroll_bar=True,
-        on_change=self.dummy,
-        on_select=self.dummy
-    ))
-    list_lay.add_widget(Divider())
-
     tx_buttons_lay = Layout([1, 1])
     self.add_layout(tx_buttons_lay)
-    tx_buttons_lay.add_widget(Button('Next', on_click=self.dummy), 0)
+    tx_buttons_lay.add_widget(Button('Save', on_click=self.dummy), 0)
     tx_buttons_lay.add_widget(Button('Cancel', on_click=self.dummy), 1)
+
+    lay1 = Layout([1])
+    self.add_layout(lay1)
+    lay1.add_widget(Divider())
+
+    self._model.draw_ui(self)
 
     self.fix()
 
 
 class Model:
-  pass
+
+  def __init__(self):
+    pcl = ProtoCommandLoader()
+    self._command = pcl.wrapped_command_by_name('AddPeer')
+    self._message_model = MessageModel(self._command.unwrapped)
+    self._ui_adaptor = None
+
+  def draw_ui(self, frame):
+    if not self._ui_adaptor:
+      self._ui_adaptor = CommandTuiAdaptor(self._message_model, frame)
+    self._ui_adaptor.draw_ui()
 
 
 def play_wrapper(screen, scene):
   model = Model()
   scenes = [
-      Scene([CommandView(screen, model)], -1, name='Command Composer'),
+      Scene([CommandView(screen, model)], -1, name='Command Editor'),
   ]
 
   screen.play(scenes, stop_on_resize=True, start_scene=scene, allow_int=True)

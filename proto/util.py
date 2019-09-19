@@ -1,41 +1,79 @@
 #!/usr/bin/env python3
 
-from . import commands_pb2
-from commons import reraise
-import re
+from pprint import pprint
+from .commands import ProtoCommandLoader, CommandWrapper, CommandPreview
+from .parsers import ProtoMessageExplorer
+from .message import MessageModel
+from sys import exit
+
+pc = ProtoCommandLoader()
+
+# for _, cname, _ in pc.commands:
+#   print()
+#   print(cname)
+#   wrapped = pc.wrapped_command_by_name(cname)
+#   model = MessageModel(wrapped.unwrapped)
+#   pprint(model.descriptor)
+
+cr = pc.wrapped_command_by_name('SetAccountQuorum')
 
 
-class ProtoCommands:
-  ROOT_MSG = 'Command'
-  MSG_FIELD = 'command'
+crmodel = MessageModel(cr.unwrapped)
+# pprint(crmodel.descriptor)
 
-  def __init__(self):
-    self._descr = commands_pb2.DESCRIPTOR
-    self._cmd_message = None
-    self._cmd_field = None
-    self._preload_cmd_field()
+f = '.account_id'
+# crmodel.set_to(f, 'admin@test')
 
-  def _preload_cmd_field(self):
-    try:
-      self._cmd_message = self._descr.message_types_by_name[self.ROOT_MSG]
-    except KeyError as ke:
-      reraise(ke, 'Message {} not found in commands proto descriptor, '
-              'the schema or client needs to be updated'.format(self.ROOT_MSG))
+# crmodel.set_to('.quorum', 4)
 
-    try:
-      self._cmd_field = self._cmd_message.oneofs_by_name[self.MSG_FIELD]
-    except KeyError as ke:
-      reraise(ke, 'Field {} for commands listing was not found in proto message {}'.
-              format(self.MSG_FIELD, self.ROOT_MSG))
 
-  def list_commands(self, pretty_names=False):
-    """
-    returns list of tuples with message names and field names
-    """
-    commands = []
-    for cmd in self._cmd_field.fields:
-      message_name = cmd.message_type.name
-      if pretty_names:
-        message_name = re.sub(r'([A-Z])', r' \1', message_name).strip()
-      commands.append((message_name, cmd.name))
-    return commands
+print(crmodel.read(f))
+print(cr.unwrapped.quorum)
+
+preview = CommandPreview(cr.unwrapped)
+
+print(preview.brief)
+print(preview.full)
+
+
+#####################################################################################
+# pprint(crmodel.descriptor)
+
+
+# pprint(pc.commands)
+
+# ap = pc.command_message_by_name('AddPeer')
+
+# ap.peer.address = 'someaddr'
+
+# apmodel = MessageModel(ap)
+# apmodel.set_to('.peer.address', 'anotheraddr')
+# apmodel.clear('.peer.address')
+
+# print(apmodel.read('.peer.address'))
+
+# exit(0)
+
+# ap2 = pc.command_message_by_name('AddPeer')
+
+# print("'{}' '{}'".format(ap.peer.address, ap2.peer.address))
+
+# props = ProtoMessageExplorer(ap).descriptor
+
+# pprint(props)
+
+
+# # name = input()
+# name = 'CreateRole'
+
+# saqd = pc.command_proto_descriptor_by_message_name(name)
+# # print(dir(saqd))
+
+# saq_model = ProtoMessageDescriptorParser(saqd).descriptor
+# pprint(saq_model)
+
+# # print(saqd2)
+
+# # print(dir(saqd), saqd.fields_by_number[1])
+
+# # saq = commands_pb2.SetAccountQuorum()
