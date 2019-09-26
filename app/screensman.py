@@ -39,3 +39,13 @@ class ScreensManager:
     """
     self._screens.pop()
     raise NextScene(self._screens[-1])
+
+  def backto(self, screen):
+    """
+    Go back till the screen with specified name comes active
+    """
+    if not screen in self._screens:
+      raise Exception('Unable to go back to "{}" - screen not in stack'.format(screen))
+    while self.active != screen:
+      self._screens.pop()
+    raise NextScene(screen)

@@ -3,3 +3,5 @@ future==0.17.1
 Pillow==6.1.0
 pyfiglet==0.8.post1
 wcwidth==0.1.7
+protobuf==3.9.2
+iroha==0.0.5.4

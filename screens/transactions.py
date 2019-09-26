@@ -14,7 +14,6 @@ from tui.multicolumnchecklistbox import MultiColumnCheckListBox
 from app.transactions import TransactionsPoolViewer
 
 
-
 class TransactionsView(Frame):
 
   def __init__(self, screen_name, screen, model):
@@ -44,7 +43,7 @@ class TransactionsView(Frame):
     )
     self._model = model
 
-    nav_lay = Layout([1,1,1])
+    nav_lay = Layout([1, 1, 1])
     self.add_layout(nav_lay)
     nav_lay.add_widget(Label('Go to:'))
     nav_lay.add_widget(Button('Main menu', self._main_menu), 1)
@@ -83,7 +82,7 @@ class TransactionsView(Frame):
     self.fix()
 
   def _reload_list(self, new_value=None):
-    viewer = TransactionsPoolViewer(self._model._txs_pool)
+    viewer = TransactionsPoolViewer(self._model.txs_pool)
     data = []
     i = 0
     for tx in viewer.data:
@@ -105,14 +104,17 @@ class TransactionsView(Frame):
     self._refresh_buttons_state()
 
   def _create_tx(self):
-    self._model._current_tx_idx = self._model._txs_pool.add()
+    self._model._current_tx_idx = self._model.txs_pool.add()
+    # self._model.temp_tx.idx = self._model.txs_pool.add()
+    self._model._temp_tx = self._model.txs_pool[self._model._current_tx_idx]
+    # self._model.temp_tx.load_from_txs_pool(self._model.txs_pool)
     self._reload_list()
     self._model.nextscreen('Transaction Editor')
 
   def _remove_txs(self):
     to_remove = list(reversed(sorted(self._transactions_list._selected)))
     for txidx in to_remove:
-      del self._model._txs_pool[txidx]
+      del self._model.txs_pool[txidx]
     self._reload_list()
 
   def update(self, frame_no):
@@ -137,6 +139,9 @@ class TransactionsView(Frame):
     if self._transactions_list.value[0] is None:
       return
     self._model._current_tx_idx = self._transactions_list.value[0]
+    # self._model.temp_tx.idx = self._transactions_list.value[0]
+    self._model._temp_tx = self._model.txs_pool[self._model._current_tx_idx]
+    # self._model.temp_tx.load_from_txs_pool(self._model.txs_pool)
     self._model.nextscreen('Transaction Editor')
 
   def _main_menu(self):

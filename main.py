@@ -11,7 +11,6 @@ from screens import init_scenes
 from screens.selector import SelectorView
 from screens.transactions import TransactionsView
 
-
 START_SCREEN = 'Mode Selector'
 MODEL = AppModel(START_SCREEN)
 

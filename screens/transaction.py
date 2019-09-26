@@ -5,6 +5,7 @@ from asciimatics.widgets import Frame, Layout, Button, Divider, Label, Text, Lis
 from asciimatics.screen import Screen
 from tui.indicators import Indicators
 
+from iroha import IrohaCrypto
 from datetime import datetime
 from app.validators import uint64_validator, account_id_validator, quorum_validator
 
@@ -53,15 +54,18 @@ class TransactionView(Frame, Indicators):
   def update(self, frame_no):
     # Used to ensure that model._current_frame is set correctly
     self._submodel = self._model.submodel(self._screen_name, self)
-    super().update(frame_no)
+    self._semi_save()
+    return super().update(frame_no)
 
   def _onload_handler(self):
     self._submodel.load()
     if self._submodel.initialized:
+      tx_hash = IrohaCrypto.hash(self._model._temp_tx).hex()
       data = self._submodel.data
       self._commands_list.options = data['commands_names']
       del data['commands_names']
       self.data = data
+      data['tx_hash'] = tx_hash
       self.indicators_data = data
 
     self._init_focus()
@@ -70,9 +74,6 @@ class TransactionView(Frame, Indicators):
     if self._init_focus_on:
       to = self._init_focus_on
       self.switch_focus(to['layout'], to['column'], to['widget'])
-
-  def dummy(self):
-    pass
 
   def _set_current_timestamp(self):
     self.data = {
@@ -94,15 +95,11 @@ class TransactionView(Frame, Indicators):
     }
     return result
 
-  def _save_go_back(self):
-    self._semi_save()
-    self._cancel()
-
   def _compose_layout(self):
     PADDING = 0
     tx_buttons_lay = Layout([1, 1, 1])
     self.add_layout(tx_buttons_lay)
-    tx_buttons_lay.add_widget(Button('Save', on_click=self._semi_save), 0)
+    tx_buttons_lay.add_widget(Button('Save', on_click=self._save), 0)
     tx_buttons_lay.add_widget(Button('Save & Go back', on_click=self._save_go_back), 1)
     tx_buttons_lay.add_widget(Button('Go back', on_click=self._cancel), 2)
 
@@ -143,12 +140,12 @@ class TransactionView(Frame, Indicators):
     lay4 = Layout([PADDING, 3, 2, 2, 2, 1, 3, 3, 2, PADDING])
     self.add_layout(lay4)
     lay4.add_widget(Label('Commands:'), 1)
-    lay4.add_widget(Button('Add', on_click=self.dummy), 2)
-    lay4.add_widget(Button('Edit', on_click=self.dummy), 3)
-    lay4.add_widget(Button('Del', on_click=self.dummy), 4)
+    lay4.add_widget(Button('Add', on_click=self._add_command), 2)
+    lay4.add_widget(Button('Edit', on_click=self._edit_command), 3)
+    lay4.add_widget(Button('Del', on_click=self._remove_command), 4)
     lay4.add_widget(Label('Signatures:'), 6)
-    lay4.add_widget(Button('Add/Sign', on_click=self.dummy), 7)
-    lay4.add_widget(Button('Del', on_click=self.dummy), 8)
+    lay4.add_widget(Button('Add/Sign', on_click=self._add_signature), 7)
+    lay4.add_widget(Button('Del', on_click=self._remove_signature), 8)
 
     lay5 = Layout([PADDING, 9, 1, 8, PADDING])
     self.add_layout(lay5)
@@ -157,8 +154,7 @@ class TransactionView(Frame, Indicators):
         [],
         name='commands',
         add_scroll_bar=True,
-        on_change=self.dummy,
-        on_select=self.dummy
+        on_select=self._edit_command
     )
     lay5.add_widget(self._commands_list, 1)
     lay5.add_widget(VerticalDivider(), 2)
@@ -167,31 +163,73 @@ class TransactionView(Frame, Indicators):
         {},
         name='signatures',
         add_scroll_bar=True,
-        on_change=self.dummy,
-        on_select=self.dummy
+        on_select=self._show_signature_public_key
     )
     lay5.add_widget(self._signatures_list, 3)
     self.fix()
 
-  def process_event(self, event):
-    if isinstance(event, KeyboardEvent):
-      if event.key_code == Screen.KEY_ESCAPE:
-        self._cancel()
-    super().process_event(event)
+  """
+  C o m m a n d s
+  """
+
+  def _add_command(self):
+    self._semi_save()
+    self._model.nextscreen('Command Selector')
+
+  def _edit_command(self):
+    pass
+
+  def _remove_command(self):
+    pass
+
+  """
+  S i g n a t u r e s
+  """
+
+  def _add_signature(self):
+    pass
+
+  def _remove_signature(self):
+    pass
+
+  def _show_signature_public_key(self):
+    pass  # popup with public key
+
+  """
+  Global buttons handlers
+  """
 
   def _semi_save(self):
     self.save()
     if self._submodel.initialized:
       try:
         self._submodel.data = self.data
+        tx_hash = IrohaCrypto.hash(self._model._temp_tx).hex()
+        self.indicators_data = {'tx_hash': tx_hash}
       except ValueError:
         self.indicators_data = {'tx_hash': 'Invalid data entered'}
-        # self._model.popup('Changes cannot be saved. Please check data format.\nError:\n{}'.format(str(e)))
-        return
-      self._submodel.save()
+        return False
+    return True
+
+  def _save(self):
+    if self._submodel.initialized:
+      self._semi_save()
+      self._submodel.commit()
+
+  def _save_go_back(self):
+    self._save()
+    self._cancel()
 
   def _cancel(self):
-    self._submodel.cleanup()
     self._model._current_tx_idx = None
+    self._model._temp_tx = None
+    self._model._temp_cmd = None
+    self._model._current_cmd_idx = None
     self._submodel.reset()
     self._model.previousscreen()
+
+  def process_event(self, event):
+    if isinstance(event, KeyboardEvent):
+      if event.key_code == Screen.KEY_ESCAPE:
+        self._cancel()
+    super().process_event(event)
