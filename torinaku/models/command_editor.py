@@ -1,6 +1,6 @@
+from iroha.commands_pb2 import Command
 from torinaku.models.base import BaseModel
 from torinaku.proto.commands import CommandWrapper, ProtoCommandLoader
-from torinaku.proto.commands_pb2 import Command
 from torinaku.proto.message import ProtoMessageProxy
 from torinaku.tui.adaptors import CommandTuiAdaptor
 
@@ -43,7 +43,7 @@ class CommandEditorModel(BaseModel):
 
     def save(self):
         if self.target_command:
-            self.target_command.CopyFrom(self.command_proxy.wrapped)
+            self.target_command.CopyFrom(self.command.wrapped)
         else:
             self.transaction.payload.reduced_payload.commands.extend(
                 [self.command.wrapped]

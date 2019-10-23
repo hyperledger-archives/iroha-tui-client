@@ -6,7 +6,7 @@ class TorinakuInstance:
         self.child: AppInstance = None
 
     def __enter__(self):
-        self.child = AppInstance("python3 -m torinaku")
+        self.child = AppInstance("python3 -m torinaku --test-data")
         return self.child
 
     def __exit__(self, *args, **kwargs):

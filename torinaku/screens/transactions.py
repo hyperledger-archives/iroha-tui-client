@@ -33,7 +33,7 @@ class TransactionsView(BaseScreen):
         self.add_layout(nav_lay)
         nav_lay.add_widget(Label("Go to:"))
         nav_lay.add_widget(Button("Main menu", self._model.go_back), 1)
-        nav_lay.add_widget(Button("Queries manager", self.dummy, disabled=True), 2)
+        nav_lay.add_widget(Button("Queries manager", self._model.go_to_query_manager), 2)
 
         layout = Layout([1], fill_frame=True)
         self.add_layout(layout)
@@ -132,12 +132,6 @@ class TransactionsView(BaseScreen):
         self._remove_button.disabled = disabled
         self._batch_button.disabled = disabled
         self._sign_button.disabled = disabled
-
-    def process_event(self, event):
-        if isinstance(event, KeyboardEvent):
-            if event.key_code == Screen.KEY_ESCAPE:
-                self._model.previousscreen()
-        super().process_event(event)
 
     def _edit_current_tx(self):
         if self._transactions_list.value[0] is None:

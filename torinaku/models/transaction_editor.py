@@ -1,6 +1,7 @@
 from datetime import datetime
 
 from iroha import IrohaCrypto, Iroha
+from iroha.transaction_pb2 import Transaction
 
 from torinaku.models.base import BaseModel
 from torinaku.screens.selector import SelectorView
@@ -11,9 +12,8 @@ from torinaku.models.signature import SignatureModel
 from torinaku.models.signature_picker import SignaturePickerModel
 from torinaku.models.command_editor import CommandEditorModel
 from torinaku.models.command_type_selector import CommandTypeSelectorModel
-from torinaku.proto.transaction_pb2 import Transaction
 from torinaku.proto.message import ProtoMessageProxy
-from torinaku.proto.commands import ProtoCommandLoader
+from torinaku.proto.commands import CommandPreview
 from torinaku.app.validators import uint64_validator
 
 
@@ -87,6 +87,10 @@ class TransactionEditorModel(BaseModel):
         self._update_signatures()
         self._update_human_time()
 
+    def reload_computed_lists(self):
+        self._update_command_names()
+        self._update_signatures()
+
     def _update_tx_hash(self):
         h = IrohaCrypto.hash(self.transaction).hex()
         if not self.is_tx_valid:
@@ -97,8 +101,10 @@ class TransactionEditorModel(BaseModel):
         commands = self.transaction.payload.reduced_payload.commands
         command_names = []
         for i, cmd in enumerate(commands):
-            command_name = cmd.WhichOneof(ProtoCommandLoader.MSG_FIELD)
-            command_names.append((f"{i} - {command_name}", i))
+            type_ = cmd.WhichOneof("command")
+            unwrapped_command = getattr(cmd, type_)
+            wrapper = CommandPreview(unwrapped_command=unwrapped_command)
+            command_names.append((wrapper.brief, i))
         self._data["command_names"] = command_names
 
     def _update_signatures(self):

@@ -26,6 +26,15 @@ class TransactionListModel(BaseModel):
     def main_menu(self):
         self._application.screen_manager.back()
 
+    def go_to_query_manager(self):
+        from torinaku.screens.query_manager import QueryManagerView
+        from torinaku.models.query_manager import QueryManagerModel
+        self.go_to(
+            QueryManagerView,
+            QueryManagerModel,
+            keep=False
+        )
+
     def send_txs(self, tx_idxs: List[int]):
         self._application.screen_manager.to(
             PeerPickerView,

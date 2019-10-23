@@ -116,11 +116,12 @@ class TransactionEditorView(BaseScreen):
         super().reset()
 
     def _update_lists(self):
+        self._model.reload_computed_lists()
         self._command_list.options = self._model.data["command_names"]
         self._signature_list.options = self._model.data["signatures"]
 
     def _edit_command(self):
-        idx = self.data["commands"]
+        idx = self._command_list.value
         self._model.edit_command(idx)
 
     def _remove_command(self):

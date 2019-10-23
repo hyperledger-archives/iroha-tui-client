@@ -1,5 +1,5 @@
 from asciimatics.screen import Screen
-from asciimatics.widgets import Frame
+from asciimatics.widgets import Frame, Divider, Layout
 from asciimatics.event import KeyboardEvent
 
 
@@ -40,6 +40,11 @@ class BaseScreen(Frame):
 
     def _compose_layout(self):
         raise NotImplementedError
+
+    def _compose_divider_layout(self):
+        layout = Layout([1])
+        self.add_layout(layout)
+        layout.add_widget(Divider())
 
     @property
     def is_skippable(self):

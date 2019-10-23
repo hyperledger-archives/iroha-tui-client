@@ -27,8 +27,9 @@ class BaseModel(abc.ABC):
     def data(self):
         return self._data
 
-    def go_to(self, frame_cls, model_cls, **model_kwargs):
-        self._application.screen_manager.to(frame_cls, model_cls, **model_kwargs)
+    def go_to(self, frame_cls, model_cls, keep=True, **model_kwargs):
+        self._application.screen_manager.to(frame_cls, model_cls, keep,
+                                            **model_kwargs)
 
     def go_back(self):
         self._application.screen_manager.back()

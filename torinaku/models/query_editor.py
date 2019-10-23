@@ -1,11 +1,11 @@
 from iroha import Iroha, IrohaCrypto
+from iroha.queries_pb2 import Query
 from loguru import logger
 
 from torinaku.models.base import BaseModel
 
 from torinaku.proto.message import ProtoMessageProxy
 from torinaku.proto.queries import ProtoQueryLoader
-from torinaku.proto.queries_pb2 import Query
 
 from torinaku.screens.peer_picker import PeerPickerView
 from torinaku.screens.signature_picker import SignaturePickerView
@@ -17,7 +17,11 @@ from torinaku.models.query_send import QuerySendModel
 
 
 class QueryEditorModel(BaseModel):
-    _plain_fields = [".payload.meta.created_time", ".payload.meta.query_counter"]
+    _plain_fields = [
+        ".payload.meta.created_time",
+        ".payload.meta.query_counter",
+        ".payload.meta.creator_account_id",
+    ]
 
     def __init__(self, *args, **kwargs):
         self.target_query = kwargs.pop("query", None)
@@ -28,13 +32,18 @@ class QueryEditorModel(BaseModel):
         self.query_proto_proxy = ProtoMessageProxy(self.query)
         if self.target_query:
             self.query.CopyFrom(self.target_query)
+        logger.debug(self.query)
 
         self.is_query_valid = False
         self.payload_proxy = None
 
         queries = ProtoQueryLoader().queries
         self.query_type_options = [(x[0], x[2]) for x in queries]
-        self.default_query_type = queries[0][2]
+        if self.target_query:
+            self.default_query_type = self.query.payload.WhichOneof("query")
+            self._update_payload_proxy(self.default_query_type)
+        else:
+            self.default_query_type = queries[0][2]
 
         super().__init__(*args, **kwargs)
 
@@ -44,7 +53,7 @@ class QueryEditorModel(BaseModel):
         return self._application.last_chosen_peer
 
     def get_init_data(self):
-        return {
+        data = {
             **{
                 field: str(self.query_proto_proxy.read(field))
                 for field in self._plain_fields
@@ -52,16 +61,30 @@ class QueryEditorModel(BaseModel):
             ".payload.meta.query_counter": str(self._application.query_counter),
             "query_type": self.default_query_type,
         }
+        if self.payload_proxy:
+            for field in self.payload_proxy.descriptor:
+                path = ".payload." + self.default_query_type + field["field_path"]
+                value = self.payload_proxy.read(field["field_path"])
+                logger.debug(value)
+                logger.debug(type(value))
+                if isinstance(value, int) or isinstance(value, str):
+                    data[path] = str(value)
+                else:
+                    data[path] = value
+        return data
 
     def update_data(self, frame_data):
         query_type = frame_data["query_type"]
-        self.payload_proxy = ProtoMessageProxy(getattr(self.query.payload, query_type))
+        self._update_payload_proxy(query_type)
 
         self._update_proto_fields(frame_data)
         self._update_proto_status(frame_data)
         self._update_signature_status(frame_data)
 
         super().update_data(frame_data)
+
+    def _update_payload_proxy(self, query_type):
+        self.payload_proxy = ProtoMessageProxy(getattr(self.query.payload, query_type))
 
     def _update_proto_fields(self, frame_data):
         try:
@@ -82,7 +105,6 @@ class QueryEditorModel(BaseModel):
         is_signature_valid = IrohaCrypto.is_signature_valid(
             self.query, self.query.signature
         )
-        logger.debug(self.query)
         if is_signature_valid:
             frame_data["signature_status"] = "<valid> "
         else:
@@ -100,8 +122,15 @@ class QueryEditorModel(BaseModel):
     def _sign_with_key(self, private_key):
         self.query = IrohaCrypto.sign_query(self.query, private_key)
 
+    def save(self):
+        if self.target_query:
+            self.target_query.CopyFrom(self.query)
+        else:
+            self._application.queries.insert(0, self.query)
+
     def save_go_back(self):
-        raise NotImplementedError
+        self.save()
+        self.go_back()
 
     def execute(self):
         self.go_to(

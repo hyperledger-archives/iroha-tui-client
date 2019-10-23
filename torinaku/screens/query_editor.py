@@ -24,7 +24,7 @@ class QueryEditorView(BaseScreen):
         self._compose_query_specific_layout()
 
     def _compose_actions_layout(self):
-        actions_layout = Layout([1, 1, 1, 1])
+        actions_layout = Layout([3, 2, 4, 3])
         self.add_layout(actions_layout)
         actions_layout.add_widget(
             Button(text="Save & Go back", on_click=self._model.save_go_back), 0

@@ -1,7 +1,6 @@
 from iroha import Iroha, IrohaCrypto
-
-from torinaku.proto.commands_pb2 import Command
-from torinaku.proto.transaction_pb2 import Transaction
+from iroha.transaction_pb2 import Transaction
+from iroha.commands_pb2 import Command
 
 
 class FakeTransactionFactory:

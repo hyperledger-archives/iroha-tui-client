@@ -1,7 +1,8 @@
 import re
 
+from iroha import commands_pb2
+
 from torinaku.commons import reraise
-from torinaku.proto import commands_pb2
 from torinaku.proto.message import ProtoMessageProxy
 from torinaku.proto.helpers import shorten_command_name
 

@@ -78,11 +78,10 @@ class ScreenManager:
         """
         return ScreenManager.from_scene(self._scene, screen, self._application)
 
-    def to(self, frame_cls, model_cls, **model_kwargs):
+    def to(self, frame_cls, model_cls, keep=True, **model_kwargs):
         """
         Asciimatics transition to a scene appending to the stack.
         :param frame_cls: Frame class to use.
-        :param params: Params for frame.
         """
         frame = _build_frame(
             frame_cls=frame_cls,
@@ -91,6 +90,8 @@ class ScreenManager:
             application=self._application,
             **model_kwargs,
         )
+        if not keep:
+            self._scene.remove_effect(self._scene.effects[-1])
         self._scene.add_effect(frame)
         self._scene.reset()
         self._screen.clear()

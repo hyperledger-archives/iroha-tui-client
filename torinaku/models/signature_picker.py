@@ -1,5 +1,6 @@
 from loguru import logger
 from torinaku.models.base import BaseModel
+from torinaku.tui.catch import catch
 
 
 class SignaturePickerModel(BaseModel):
@@ -7,10 +8,14 @@ class SignaturePickerModel(BaseModel):
         self.on_private_key_entered = kwargs.pop("on_private_key_entered")
         super().__init__(*args, **kwargs)
 
+    @catch()
+    def on_file_selected(self):
+        path = self.data["file_picker"]
+        with open(path, "rb") as f:
+            data = f.read()
+        self.sign(data)
+
+    @catch()
     def sign(self, private_key):
-        try:
-            self.on_private_key_entered(private_key)
-            self.cancel()
-        except Exception as e:
-            logger.debug(e)
-            pass
+        self.on_private_key_entered(private_key)
+        self.cancel()
