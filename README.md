@@ -1,6 +1,6 @@
 # Torinaku
 
-A TUI client for ![Hyperledger Iroha](https://github.com/hyperledger/iroha).
+A TUI client for [Hyperledger Iroha](https://github.com/hyperledger/iroha).
 Works only with python3.6+.
 
 ### How to run
