@@ -71,3 +71,20 @@ $ python3 -m torinaku --persistence-file-path /home/user/.config/torinaku.json
     This file will automatically be created and managed. It is opened only on startup
     and on exit.
 
+### Example setup for convenience
+
+You can specify the config file using an environment variable, and configure persistence
+for convenient launch using only `torinaku` without any parameters.
+
+To do this, execute the following:
+```
+$ cat <<EOF > ~/.bash_profile
+export TORINAKU_CONFIG=~/.config/torinaku/config.json
+EOF
+$ mkdir -p ~/.config/torinaku
+$ cat <<EOF > ~/.config/torinaku.json
+{
+    "persistence_file_path": "~/.config/torinaku/persistence.json"
+}
+```
+
