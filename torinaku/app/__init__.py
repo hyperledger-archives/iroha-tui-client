@@ -3,6 +3,7 @@ import sys
 from asciimatics.screen import Screen, ResizeScreenError
 
 from torinaku.app.screen_manager import ScreenManager
+from torinaku.app.persistence import Persistence
 from torinaku.models.mode_selector import ModeSelectorModel
 from torinaku.screens.selector import SelectorView
 
@@ -12,12 +13,18 @@ class Torinaku:
     Main application class
     """
 
-    def __init__(self):
+    def __init__(self, config):
         self.screen_manager: ScreenManager = None
 
+        self.config = config
         self.transactions = []
         self.queries = []
         self.last_chosen_peer = None
+
+        self.persistence = None
+        if config.get("persistence_file_path"):
+            self.persistence = Persistence(config["persistence_file_path"])
+            self.persistence.load(self)
 
         self.query_counter = 1
 
@@ -28,10 +35,14 @@ class Torinaku:
                 Screen.wrapper(
                     self._run_with_screen, catch_interrupt=False, arguments=[last_scene]
                 )
+                if self.persistence:
+                    self.persistence.dump(self)
                 sys.exit(0)
             except ResizeScreenError as e:
                 last_scene = e.scene
             except KeyboardInterrupt:
+                if self.persistence:
+                    self.persistence.dump(self)
                 sys.exit(0)
 
     def _run_with_screen(self, screen, scene):
