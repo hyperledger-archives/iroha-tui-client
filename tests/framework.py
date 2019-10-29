@@ -1,97 +1,128 @@
-"""
-Testing framework for interactive curses apps.
-"""
-
-import time
-import pexpect
-from pyte.screens import Screen
-from pyte.streams import ByteStream
+from contextlib import contextmanager
+from unittest.mock import MagicMock
+from asciimatics.event import KeyboardEvent
+from asciimatics.screen import Screen, Canvas
 from termcolor import colored
+from iroha_tui.app.screen_manager import ScreenManager
+from iroha_tui.screens.selector import SelectorView
+from iroha_tui.models.mode_selector import ModeSelectorModel
+from tests.app import TestIrohaTUI
 
 
-class AppInstance:
-    def __init__(self, shell_cmd):
-        self._screen = Screen(80, 25)
-        self._stream = ByteStream(self._screen)
-        self._pexpect = pexpect.spawn("/bin/bash", ["-c", shell_cmd], use_poll=True)
+COLORS = dict(
+    zip(
+        range(8),
+        [
+            "grey",
+            "red",
+            "green",
+            "yellow",
+            "blue",
+            "magenta",
+            "cyan",
+            "white",
+        ]
+    )
+)
 
-    def send(self, input_: str):
-        self._pexpect.send(input_)
-        self._read_with_timeouts()
 
-    def send_control(self, input_: str):
-        self._pexpect.sendcontrol(input_)
+class IrohaTUITestInstance:
+    def __init__(self):
+        self.instance = TestIrohaTUI()
 
-    def send_movement(self, type_: str, n: int):
-        codes = {
-            "up": "\x1bOA",
-            "down": "\033OB",
-            "right": "\x1bOC",
-            "left": "\x1bOD"
-        }
-        self.send(codes[type_] * n)
+        self.screen = MagicMock(spec=Screen, colours=8, unicode_aware=False)
+        self.canvas = Canvas(self.screen, 25, 80, 0, 0)
+        self.canvas.clear = lambda: self.canvas.reset()
+        self.instance.screen_manager = ScreenManager.from_frame(
+            SelectorView,
+            ModeSelectorModel,
+            screen=self.canvas,
+            application=self.instance
+        )
 
-    def send_backspace(self, n: int):
+    def _update(self):
+        for effect in self.instance.screen_manager.scene.effects:
+            effect.update(0)
+
+    def _send_raw(self, code):
+        self.instance.screen_manager.scene.process_event(KeyboardEvent(code))
+
+    def send_codes(self, s):
+        for c in s:
+            self._send_raw(ord(c))
+        self._update()
+
+    def send_tab(self, n=1):
         for _ in range(n):
-            self.send_control("h")
+            self._send_raw(Screen.KEY_TAB)
+        self._update()
 
-    def expect_at(self, row: int, col: int, s: str):
-        self._read_with_timeouts()
-        ok = self._screen.display[row][col:].startswith(s)
+    def send_backspace(self, n=1):
+        for _ in range(n):
+            self._send_raw(Screen.KEY_BACK)
+        self._update()
 
-        if not ok:
-            self._dump_display()
-            raise ValueError
+    def send_enter(self, n=1):
+        for _ in range(n):
+            self._send_raw("\r")
+        self._update()
 
-    def expect(self, s: str):
-        self.locate(s)
+    def send(self, *sequence):
+        new_sequence = []
+        for i in sequence:
+            if isinstance(i, tuple):
+                new_sequence.extend([i[0]] * i[1])
+            else:
+                new_sequence.append(i)
 
-    def locate(self, s: str):
-        for i, row in enumerate(self._screen.display):
-            idx = row.find(s)
-            if idx != -1:
-                return i, idx
+        for i in new_sequence:
+            if isinstance(i, str):
+                code = getattr(Screen, "KEY_" + i.upper(), None)
+                if code:
+                    self._send_raw(code)
+                else:
+                    self.send_codes(i)
+            elif isinstance(i, int):
+                self._send_raw(code)
+            else:
+                raise ValueError(f"Wrong type: {i}")
 
-        self._dump_display()
+    def expect(self, s):
+        for y in range(self.canvas.height):
+            chars = []
+            for x in range(self.canvas.width):
+                char, _, _, _ = self.canvas.get_from(x, y)
+                chars.append(chr(char))
+            if s in "".join(chars):
+                return x, y
+
+        self.dump_canvas()
         raise ValueError
 
-    def close(self):
-        self._pexpect.close()
-
-    def _dump_display(self):
+    def dump_canvas(self):
         good_colors = {"grey", "red", "green", "yellow", "blue", "magenta", "cyan",
                        "white"}
 
         print("-" * 80)
-        for row in self._screen.buffer.values():
-            for char in row.values():
+        for y in range(self.canvas.height):
+            for x in range(self.canvas.width):
+                char, fg, _, bg = self.canvas.get_from(x, y)
+                char = chr(char)
+
+                fg = COLORS[fg]
+                bg = COLORS[bg]
+
                 args = {}
-                if char.fg in good_colors:
-                    args["color"] = char.fg
-                if char.bg in good_colors:
-                    args["on_color"] = f"on_{char.bg}"
-                print(colored(char.data, **args), end='')
+                if fg in good_colors:
+                    args["color"] = fg
+                if bg in good_colors:
+                    args["on_color"] = f"on_{bg}"
+                print(colored(char, **args), end='')
             print("\r")
         print("-" * 80)
 
-    def _read_with_timeouts(self, timeouts=1, overall_timeout=2):
-        output = []
-        begin = time.monotonic()
-        try:
-            while True:
-                output.append(self._pexpect.read_nonblocking(timeout=timeouts))
-                if time.monotonic() - begin > overall_timeout:
-                    break
-        except pexpect.exceptions.TIMEOUT:
-            pass
-        self._stream.feed(b"".join(output))
 
-
-def main():
-    instance = AppInstance("python3 -m torinaku")
-    print(instance.locate("Iroha TUI"))
-    instance.expect_at(3, 35, "Iroha TUI")
-
-
-if __name__ == "__main__":
-    main()
+@contextmanager
+def make_tui_instance():
+    instance = IrohaTUITestInstance()
+    yield instance
