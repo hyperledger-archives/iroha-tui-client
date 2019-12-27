@@ -7,10 +7,7 @@ from asciimatics.widgets import (
     ListBox,
     VerticalDivider,
 )
-from iroha_tui.app.validators import (
-    account_id_validator,
-    quorum_validator,
-)
+from iroha_tui.app.validators import quorum_validator
 from iroha_tui.screens.base import BaseScreen
 from iroha_tui.tui.dynamic_label import DynamicLabel
 
@@ -46,10 +43,7 @@ class TransactionEditorView(BaseScreen):
         self._init_focus_on = {"layout": lay1, "column": 2, "widget": 0}
         lay1.add_widget(Label("Creator Id"), 1)
         lay1.add_widget(
-            Text(
-                name=".payload.reduced_payload.creator_account_id",
-                validator=account_id_validator,
-            ),
+            Text(name=".payload.reduced_payload.creator_account_id"),
             2,
         )
         lay1.add_widget(Label("Quorum"), 1)
