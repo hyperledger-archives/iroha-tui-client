@@ -174,7 +174,9 @@ class TransactionEditorModel(BaseModel):
         if self.target_transaction is not None:
             self.target_transaction.CopyFrom(self.transaction)
         else:
-            self._application.transactions.insert(0, self.transaction)
+            insert_pos = 0
+            self._application.transactions.insert(insert_pos, self.transaction)
+            self.target_transaction = self._application.transactions[insert_pos]
 
     def save_go_back(self):
         """
