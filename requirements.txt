@@ -5,7 +5,7 @@ Pillow==6.2.0
 pyfiglet==0.8.post1
 wcwidth==0.1.7
 protobuf==3.9.2
-iroha==0.0.5.4
+iroha==0.0.5.5
 pytest==5.2.1
 pyte==0.8.0
 pexpect==4.7.0
