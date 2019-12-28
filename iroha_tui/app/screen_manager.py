@@ -1,3 +1,4 @@
+from asciimatics.exceptions import StopApplication
 from asciimatics.scene import Scene
 from loguru import logger
 
@@ -101,10 +102,14 @@ class ScreenManager:
         Asciimatics transition to a previous scene popping the stack.
         """
         self._scene.remove_effect(self._scene.effects[-1])
-        while getattr(self._scene.effects[-1], "is_skippable", False):
+        while self._scene.effects and getattr(self._scene.effects[-1],
+                                              "is_skippable", False):
             self._scene.remove_effect(self._scene.effects[-1])
         self._screen.clear()
         self._scene.reset()
+        if not self._scene.effects:
+            self._scene.exit()
+            raise StopApplication("Exit from the initial scene.")
         logger.debug(f"Transition back, screen stack {str(self)}")
 
     def __str__(self):
