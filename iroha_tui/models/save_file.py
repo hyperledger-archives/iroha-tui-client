@@ -11,10 +11,11 @@ class SaveFileModel(BaseModel):
     @param write_data - a function that gets called with the destination path when the user made their choice.
     @param default_file_path - a default value for the file path. Can be name only - then current dir is used.
     """
+
     def __init__(self, *args, **kwargs):
         self._write_data = kwargs.pop("write_data")
         self._init_data = {
-            'file_path': kwargs.pop('default_file_path', 'genesis_block.json')
+            "file_path": kwargs.pop("default_file_path", "genesis_block.json")
         }
         super().__init__(*args, **kwargs)
 
@@ -30,7 +31,7 @@ class SaveFileModel(BaseModel):
             try:
                 self._write_data(path)
                 self.cancel()
-                _popup(f'Successfully wrote the block to {path}.')
+                _popup(f"Successfully wrote the block to {path}.")
             except Exception as e:
                 _popup(str(e))
 
@@ -43,5 +44,7 @@ class SaveFileModel(BaseModel):
                     write()
 
             _popup(
-                f'Name {path} already exists in the filesystem. Try to overwrite?',
-                ['Yes', 'No'], maybe_overwrite)
+                f"Name {path} already exists in the filesystem. Try to overwrite?",
+                ["Yes", "No"],
+                maybe_overwrite,
+            )

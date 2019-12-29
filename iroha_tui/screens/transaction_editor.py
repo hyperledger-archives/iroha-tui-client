@@ -43,8 +43,7 @@ class TransactionEditorView(BaseScreen):
         self._init_focus_on = {"layout": lay1, "column": 2, "widget": 0}
         lay1.add_widget(Label("Creator Id"), 1)
         lay1.add_widget(
-            Text(name=".payload.reduced_payload.creator_account_id"),
-            2,
+            Text(name=".payload.reduced_payload.creator_account_id"), 2,
         )
         lay1.add_widget(Label("Quorum"), 1)
         lay1.add_widget(

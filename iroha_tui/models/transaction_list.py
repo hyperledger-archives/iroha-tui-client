@@ -35,11 +35,8 @@ class TransactionListModel(BaseModel):
     def go_to_query_manager(self):
         from iroha_tui.screens.query_manager import QueryManagerView
         from iroha_tui.models.query_manager import QueryManagerModel
-        self.go_to(
-            QueryManagerView,
-            QueryManagerModel,
-            keep=False
-        )
+
+        self.go_to(QueryManagerView, QueryManagerModel, keep=False)
 
     def send_txs(self, tx_idxs: List[int]):
         self._application.screen_manager.to(
@@ -138,20 +135,22 @@ class TransactionListModel(BaseModel):
 
     def save_genesis_block(self, tx_idxs: List[int]):
         # a genesis block with no transactions can be helpful
-        if (len(tx_idxs) == 0):
-            popup(self._application.screen_manager,
-                  "Warning: no transactions selected!")
+        if len(tx_idxs) == 0:
+            popup(
+                self._application.screen_manager, "Warning: no transactions selected!"
+            )
 
         genesis_block = MessageToJson(
-            create_genesis_block(
-                [self._application.transactions[i] for i in tx_idxs]))
+            create_genesis_block([self._application.transactions[i] for i in tx_idxs])
+        )
 
         def write_gen_block(path: str):
-            with open(path, 'wt') as out:
+            with open(path, "wt") as out:
                 out.write(genesis_block)
 
         self._application.screen_manager.to(
             SaveFileView,
             SaveFileModel,
             write_data=write_gen_block,
-            default_file_path='genesis_block.json')
+            default_file_path="genesis_block.json",
+        )
