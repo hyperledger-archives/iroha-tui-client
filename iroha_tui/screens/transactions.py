@@ -33,20 +33,23 @@ class TransactionsView(BaseScreen):
         self.add_layout(nav_lay)
         nav_lay.add_widget(Label("Go to:"))
         nav_lay.add_widget(Button("Main menu", self._model.go_back), 1)
-        nav_lay.add_widget(Button("Queries manager", self._model.go_to_query_manager), 2)
+        nav_lay.add_widget(
+            Button("Queries manager", self._model.go_to_query_manager), 2
+        )
 
         layout = Layout([1], fill_frame=True)
         self.add_layout(layout)
         layout.add_widget(Divider())
         layout.add_widget(self._transactions_list)
         layout.add_widget(Divider())
-        buttons = Layout([1, 1, 1, 1, 1, 1, 1])
+        buttons = Layout([1] * 8)
         self.add_layout(buttons)
         self._send_button = Button("Send", self._send_txs)
         self._status_button = Button("Status", self._get_tx_statuses)
         self._remove_button = Button("Remove!", self._remove_txs)
         self._batch_button = Button("Batch", self._batch_txs)
         self._sign_button = Button("Sign", self._sign_txs)
+        self._gen_block_button = Button("GenBlock", self._save_genesis_block)
         buttons.add_widget(Button("Create", self._create_tx), 0)
         buttons.add_widget(self._send_button, 1)
         buttons.add_widget(self._status_button, 2)
@@ -54,6 +57,7 @@ class TransactionsView(BaseScreen):
         buttons.add_widget(Button("Sav/Ld", self.dummy, disabled=True), 4)
         buttons.add_widget(self._batch_button, 5)
         buttons.add_widget(self._sign_button, 6)
+        buttons.add_widget(self._gen_block_button, 7)
         help_messages = Layout([1])
         self.add_layout(help_messages)
         label1 = Label(
@@ -124,6 +128,10 @@ class TransactionsView(BaseScreen):
     def _sign_txs(self):
         to_sign = list(reversed(sorted(self._transactions_list._selected)))
         self._model.sign_txs(to_sign)
+
+    def _save_genesis_block(self):
+        to_sign = list(reversed(sorted(self._transactions_list._selected)))
+        self._model.save_genesis_block(to_sign)
 
     def _refresh_buttons_state(self):
         disabled = not bool(len(self._transactions_list._selected))

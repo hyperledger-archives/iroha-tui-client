@@ -1,5 +1,7 @@
 from typing import List
 
+from google.protobuf.json_format import MessageToJson
+
 from iroha import IrohaCrypto, Iroha
 
 from iroha_tui.models.base import BaseModel
@@ -10,12 +12,16 @@ from iroha_tui.models.signature_picker import SignaturePickerModel
 from iroha_tui.models.peer_picker import PeerPickerModel
 from iroha_tui.models.transaction_status_list import TransactionStatusListModel
 from iroha_tui.models.batch_type_selector import BatchTypeSelectorModel
+from iroha_tui.models.save_file import SaveFileModel
+from iroha_tui.proto.genesis_block_creator import create_genesis_block
 from iroha_tui.screens.transaction_status_list import TransactionStatusListView
 from iroha_tui.screens.transaction_editor import TransactionEditorView
 from iroha_tui.screens.grpc_request import GrpcRequestView
 from iroha_tui.screens.signature_picker import SignaturePickerView
 from iroha_tui.screens.peer_picker import PeerPickerView
 from iroha_tui.screens.selector import SelectorView
+from iroha_tui.screens.save_file import SaveFileView
+from iroha_tui.tui.popup import popup
 
 
 class TransactionListModel(BaseModel):
@@ -29,11 +35,8 @@ class TransactionListModel(BaseModel):
     def go_to_query_manager(self):
         from iroha_tui.screens.query_manager import QueryManagerView
         from iroha_tui.models.query_manager import QueryManagerModel
-        self.go_to(
-            QueryManagerView,
-            QueryManagerModel,
-            keep=False
-        )
+
+        self.go_to(QueryManagerView, QueryManagerModel, keep=False)
 
     def send_txs(self, tx_idxs: List[int]):
         self._application.screen_manager.to(
@@ -129,3 +132,25 @@ class TransactionListModel(BaseModel):
         ]
         count = len(self._model._temp_tx.payload.batch.reduced_hashes)
         return "{} batch of {} transactions".format(batch_type, count)
+
+    def save_genesis_block(self, tx_idxs: List[int]):
+        # a genesis block with no transactions can be helpful
+        if len(tx_idxs) == 0:
+            popup(
+                self._application.screen_manager, "Warning: no transactions selected!"
+            )
+
+        genesis_block = MessageToJson(
+            create_genesis_block([self._application.transactions[i] for i in tx_idxs])
+        )
+
+        def write_gen_block(path: str):
+            with open(path, "wt") as out:
+                out.write(genesis_block)
+
+        self._application.screen_manager.to(
+            SaveFileView,
+            SaveFileModel,
+            write_data=write_gen_block,
+            default_file_path="genesis_block.json",
+        )
