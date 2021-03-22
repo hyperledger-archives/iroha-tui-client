@@ -1,7 +1,7 @@
 asciimatics==1.11.0
 future==0.17.1
 loguru==0.3.2
-Pillow==6.2.0
+Pillow==8.1.1
 pyfiglet==0.8.post1
 wcwidth==0.1.7
 protobuf==3.9.2
