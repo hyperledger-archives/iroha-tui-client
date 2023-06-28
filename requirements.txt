@@ -4,7 +4,7 @@ loguru==0.3.2
 Pillow==8.1.1
 pyfiglet==0.8.post1
 wcwidth==0.1.7
-protobuf==3.9.2
+protobuf==3.18.3
 iroha==0.0.5.5
 pytest==5.2.1
 pyte==0.8.0
